@@ -38,26 +38,69 @@ class GoogleCalendarClient:
     
     def get_today_events(self):
         now = datetime.datetime.now(self.timezone)
-        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return self.get_events_for_date(now)
+    
+    def get_all_calendars(self):
+        try:
+            calendars = self.service.calendarList().list().execute()
+            return calendars.get('items', [])
+        except Exception as e:
+            print(f"Error fetching calendar list: {e}")
+            return []
+    
+    def get_events_for_date(self, date, include_all_calendars=False):
+        if isinstance(date, str):
+            date = datetime.datetime.strptime(date, '%Y-%m-%d')
+        
+        if date.tzinfo is None:
+            date = self.timezone.localize(date)
+        
+        start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + datetime.timedelta(days=1)
         
         time_min = start_of_day.isoformat()
         time_max = end_of_day.isoformat()
         
-        try:
-            events_result = self.service.events().list(
-                calendarId=self.calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                singleEvents=True,
-                orderBy='startTime'
-            ).execute()
-            
-            events = events_result.get('items', [])
-            return self._parse_events(events)
-        except Exception as e:
-            print(f"Error fetching calendar events: {e}")
-            return []
+        all_events = []
+        
+        if include_all_calendars:
+            calendars = self.get_all_calendars()
+            calendar_ids = [cal['id'] for cal in calendars]
+        else:
+            calendar_ids = [self.calendar_id] if isinstance(self.calendar_id, str) else self.calendar_id
+        
+        for cal_id in calendar_ids:
+            try:
+                events_result = self.service.events().list(
+                    calendarId=cal_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    singleEvents=True,
+                    orderBy='startTime'
+                ).execute()
+                
+                events = events_result.get('items', [])
+                
+                # Add calendar name to each event for context
+                calendar_name = cal_id
+                for calendar in self.get_all_calendars():
+                    if calendar['id'] == cal_id:
+                        calendar_name = calendar.get('summary', cal_id)
+                        break
+                
+                for event in events:
+                    event['calendar_name'] = calendar_name
+                
+                all_events.extend(events)
+            except Exception as e:
+                print(f"Error fetching events from calendar {cal_id}: {e}")
+                continue
+        
+        # Sort all events by start time
+        parsed_events = self._parse_events(all_events)
+        parsed_events.sort(key=lambda x: x.get('start_time', datetime.datetime.min))
+        
+        return parsed_events
     
     def _parse_events(self, events):
         parsed_events = []
@@ -67,6 +110,7 @@ class GoogleCalendarClient:
                 'summary': event.get('summary', 'No title'),
                 'location': event.get('location', ''),
                 'description': event.get('description', ''),
+                'calendar_name': event.get('calendar_name', ''),
             }
             
             if 'dateTime' in event.get('start', {}):

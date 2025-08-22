@@ -13,15 +13,29 @@ from summary_generator import SummaryGenerator
 
 load_dotenv()
 
-def send_daily_summary():
-    print(f"[{datetime.now()}] Generating daily calendar summary...")
+def send_daily_summary(test_date=None, include_all_calendars=False):
+    if test_date:
+        print(f"[{datetime.now()}] Generating calendar summary for {test_date}...")
+    else:
+        print(f"[{datetime.now()}] Generating daily calendar summary...")
+    
+    if include_all_calendars:
+        print(f"[{datetime.now()}] Including events from ALL calendars...")
     
     try:
         timezone = os.getenv('TIMEZONE', 'America/New_York')
         calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
         
+        # Check if we should include all calendars from env
+        if os.getenv('INCLUDE_ALL_CALENDARS', 'false').lower() == 'true':
+            include_all_calendars = True
+        
         calendar_client = GoogleCalendarClient(calendar_id=calendar_id, timezone=timezone)
-        events = calendar_client.get_today_events()
+        
+        if test_date:
+            events = calendar_client.get_events_for_date(test_date, include_all_calendars=include_all_calendars)
+        else:
+            events = calendar_client.get_events_for_date(datetime.now(), include_all_calendars=include_all_calendars)
         
         summary_gen = SummaryGenerator(timezone=timezone)
         message = summary_gen.generate_summary(events)
@@ -31,8 +45,9 @@ def send_daily_summary():
             api_token=os.getenv('PUSHOVER_API_TOKEN')
         )
         
+        title = f"📅 Calendar Summary for {test_date}" if test_date else "📅 Daily Calendar Summary"
         success = pushover_client.send_summary(
-            title="📅 Daily Calendar Summary",
+            title=title,
             message=message
         )
         
@@ -59,19 +74,33 @@ def run_scheduler():
         schedule.run_pending()
         time.sleep(60)
 
-def test_summary():
-    print("Testing calendar summary generation...")
-    send_daily_summary()
+def test_summary(test_date=None, include_all_calendars=False):
+    if test_date:
+        print(f"Testing calendar summary generation for {test_date}...")
+    else:
+        print("Testing calendar summary generation for today...")
+    send_daily_summary(test_date, include_all_calendars)
 
 if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1 and sys.argv[1] == "test":
-        test_summary()
+        test_date = None
+        include_all = False
+        
+        # Parse remaining arguments
+        args = sys.argv[2:]
+        for arg in args:
+            if arg == '--all':
+                include_all = True
+            elif not test_date and '-' not in arg[:2]:  # Assume it's a date if not a flag
+                test_date = arg
+        
+        test_summary(test_date, include_all)
     else:
         try:
             run_scheduler()
         except KeyboardInterrupt:
-            print("\n[{datetime.now()}] Service stopped by user")
+            print(f"\n[{datetime.now()}] Service stopped by user")
         except Exception as e:
             print(f"[{datetime.now()}] Service error: {e}")
