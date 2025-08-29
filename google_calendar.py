@@ -49,7 +49,7 @@ class GoogleCalendarClient:
             print(f"Error fetching calendar list: {e}")
             return []
     
-    def get_events_for_date(self, date, include_all_calendars=False):
+    def get_events_for_date(self, date):
         if isinstance(date, str):
             date = datetime.datetime.strptime(date, '%Y-%m-%d')
         
@@ -64,11 +64,8 @@ class GoogleCalendarClient:
         
         all_events = []
         
-        if include_all_calendars:
-            calendars = self.get_all_calendars()
-            calendar_ids = [cal['id'] for cal in calendars]
-        else:
-            calendar_ids = [self.calendar_id] if isinstance(self.calendar_id, str) else self.calendar_id
+        calendars = self.get_all_calendars()
+        calendar_ids = [cal['id'] for cal in calendars]
         
         for cal_id in calendar_ids:
             try:

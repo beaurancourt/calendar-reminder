@@ -13,29 +13,24 @@ from summary_generator import SummaryGenerator
 
 load_dotenv()
 
-def send_daily_summary(test_date=None, include_all_calendars=False):
+def send_daily_summary(test_date=None):
     if test_date:
         print(f"[{datetime.now()}] Generating calendar summary for {test_date}...")
     else:
         print(f"[{datetime.now()}] Generating daily calendar summary...")
     
-    if include_all_calendars:
-        print(f"[{datetime.now()}] Including events from ALL calendars...")
+    print(f"[{datetime.now()}] Including events from ALL calendars...")
     
     try:
         timezone = os.getenv('TIMEZONE', 'America/New_York')
         calendar_id = os.getenv('GOOGLE_CALENDAR_ID', 'primary')
         
-        # Check if we should include all calendars from env
-        if os.getenv('INCLUDE_ALL_CALENDARS', 'false').lower() == 'true':
-            include_all_calendars = True
-        
         calendar_client = GoogleCalendarClient(calendar_id=calendar_id, timezone=timezone)
         
         if test_date:
-            events = calendar_client.get_events_for_date(test_date, include_all_calendars=include_all_calendars)
+            events = calendar_client.get_events_for_date(test_date)
         else:
-            events = calendar_client.get_events_for_date(datetime.now(), include_all_calendars=include_all_calendars)
+            events = calendar_client.get_events_for_date(datetime.now())
         
         summary_gen = SummaryGenerator(timezone=timezone)
         message = summary_gen.generate_summary(events)
@@ -74,29 +69,26 @@ def run_scheduler():
         schedule.run_pending()
         time.sleep(60)
 
-def test_summary(test_date=None, include_all_calendars=False):
+def test_summary(test_date=None):
     if test_date:
         print(f"Testing calendar summary generation for {test_date}...")
     else:
         print("Testing calendar summary generation for today...")
-    send_daily_summary(test_date, include_all_calendars)
+    send_daily_summary(test_date)
 
 if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         test_date = None
-        include_all = False
         
         # Parse remaining arguments
         args = sys.argv[2:]
         for arg in args:
-            if arg == '--all':
-                include_all = True
-            elif not test_date and '-' not in arg[:2]:  # Assume it's a date if not a flag
+            if not test_date and '-' not in arg[:2]:  # Assume it's a date if not a flag
                 test_date = arg
         
-        test_summary(test_date, include_all)
+        test_summary(test_date)
     else:
         try:
             run_scheduler()
