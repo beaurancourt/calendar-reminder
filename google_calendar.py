@@ -96,7 +96,8 @@ class GoogleCalendarClient:
         
         # Sort all events by start time
         parsed_events = self._parse_events(all_events)
-        parsed_events.sort(key=lambda x: x.get('start_time', datetime.datetime.min))
+        min_datetime = self.timezone.localize(datetime.datetime(1900, 1, 1))
+        parsed_events.sort(key=lambda x: x.get('start_time', min_datetime))
         
         return parsed_events
     
@@ -116,14 +117,16 @@ class GoogleCalendarClient:
                 event_data['start_time'] = datetime.datetime.fromisoformat(start_str.replace('Z', '+00:00'))
                 event_data['all_day'] = False
             elif 'date' in event.get('start', {}):
-                event_data['start_time'] = datetime.datetime.strptime(event['start']['date'], '%Y-%m-%d')
+                naive_date = datetime.datetime.strptime(event['start']['date'], '%Y-%m-%d')
+                event_data['start_time'] = self.timezone.localize(naive_date)
                 event_data['all_day'] = True
             
             if 'dateTime' in event.get('end', {}):
                 end_str = event['end']['dateTime']
                 event_data['end_time'] = datetime.datetime.fromisoformat(end_str.replace('Z', '+00:00'))
             elif 'date' in event.get('end', {}):
-                event_data['end_time'] = datetime.datetime.strptime(event['end']['date'], '%Y-%m-%d')
+                naive_date = datetime.datetime.strptime(event['end']['date'], '%Y-%m-%d')
+                event_data['end_time'] = self.timezone.localize(naive_date)
             
             parsed_events.append(event_data)
         

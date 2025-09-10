@@ -30,7 +30,8 @@ def send_daily_summary(test_date=None):
         if test_date:
             events = calendar_client.get_events_for_date(test_date)
         else:
-            events = calendar_client.get_events_for_date(datetime.now())
+            tz = pytz.timezone(timezone)
+            events = calendar_client.get_events_for_date(datetime.now(tz))
         
         summary_gen = SummaryGenerator(timezone=timezone)
         message = summary_gen.generate_summary(events)
