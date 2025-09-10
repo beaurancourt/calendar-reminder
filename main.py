@@ -53,7 +53,21 @@ def send_daily_summary(test_date=None):
             print(f"[{datetime.now()}] Failed to send summary")
             
     except Exception as e:
-        print(f"[{datetime.now()}] Error in send_daily_summary: {e}")
+        error_msg = str(e)
+        print(f"[{datetime.now()}] Error in send_daily_summary: {error_msg}")
+        
+        # Try to send error to Pushover
+        try:
+            pushover_client = PushoverClient(
+                user_key=os.getenv('PUSHOVER_USER_KEY'),
+                api_token=os.getenv('PUSHOVER_API_TOKEN')
+            )
+            pushover_client.send_summary(
+                title="❌ Calendar Summary Error",
+                message=f"Failed to generate calendar summary:\n\n{error_msg}"
+            )
+        except Exception as pushover_error:
+            print(f"[{datetime.now()}] Failed to send error to Pushover: {pushover_error}")
 
 def run_scheduler():
     timezone = pytz.timezone(os.getenv('TIMEZONE', 'America/New_York'))
