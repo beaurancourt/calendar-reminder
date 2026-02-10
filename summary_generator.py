@@ -5,12 +5,15 @@ class SummaryGenerator:
     def __init__(self, timezone='America/New_York'):
         self.timezone = pytz.timezone(timezone)
     
-    def generate_summary(self, events):
+    def generate_summary(self, events, target_date=None):
         if not events:
-            return self._no_events_message()
-        
-        now = datetime.datetime.now(self.timezone)
-        date_str = now.strftime('%A, %B %d, %Y')
+            return self._no_events_message(target_date)
+
+        if target_date:
+            date_str = target_date.strftime('%A, %B %d, %Y')
+        else:
+            now = datetime.datetime.now(self.timezone)
+            date_str = now.strftime('%A, %B %d, %Y')
         
         message_parts = [f"<b>Your schedule for {date_str}</b>\n"]
         
@@ -57,7 +60,10 @@ class SummaryGenerator:
         
         return start_str
     
-    def _no_events_message(self):
-        now = datetime.datetime.now(self.timezone)
-        date_str = now.strftime('%A, %B %d, %Y')
+    def _no_events_message(self, target_date=None):
+        if target_date:
+            date_str = target_date.strftime('%A, %B %d, %Y')
+        else:
+            now = datetime.datetime.now(self.timezone)
+            date_str = now.strftime('%A, %B %d, %Y')
         return f"<b>Your schedule for {date_str}</b>\n\nNo events scheduled for today. Enjoy your free day! 🎉"

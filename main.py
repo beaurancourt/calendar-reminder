@@ -85,7 +85,7 @@ def send_tomorrow_summary():
         events = calendar_client.get_events_for_date(tomorrow)
 
         summary_gen = SummaryGenerator(timezone=timezone)
-        message = summary_gen.generate_summary(events)
+        message = summary_gen.generate_summary(events, target_date=tomorrow)
 
         pushover_client = PushoverClient(
             user_key=os.getenv('PUSHOVER_USER_KEY'),
