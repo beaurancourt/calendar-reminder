@@ -27,21 +27,24 @@ def send_daily_summary(test_date=None):
 
         calendar_client = GoogleCalendarClient(calendar_id=calendar_id, timezone=timezone)
 
+        tz = pytz.timezone(timezone)
         if test_date:
+            target = test_date
             events = calendar_client.get_events_for_date(test_date)
         else:
-            tz = pytz.timezone(timezone)
-            events = calendar_client.get_events_for_date(datetime.now(tz))
+            target = datetime.now(tz)
+            events = calendar_client.get_events_for_date(target)
 
         summary_gen = SummaryGenerator(timezone=timezone)
-        message = summary_gen.generate_summary(events)
+        message = summary_gen.generate_summary(events, target_date=target)
 
         pushover_client = PushoverClient(
             user_key=os.getenv('PUSHOVER_USER_KEY'),
             api_token=os.getenv('PUSHOVER_API_TOKEN')
         )
 
-        title = f"📅 Calendar Summary for {test_date}" if test_date else "📅 Daily Calendar Summary"
+        date_str = target.strftime('%Y-%m-%d') if hasattr(target, 'strftime') else str(target)
+        title = f"📅 Calendar {date_str}"
         success = pushover_client.send_summary(
             title=title,
             message=message
@@ -92,7 +95,7 @@ def send_tomorrow_summary():
             api_token=os.getenv('PUSHOVER_API_TOKEN')
         )
 
-        title = f"📅 Tomorrow's Calendar ({tomorrow.strftime('%A, %B %d')})"
+        title = f"📅 Calendar {tomorrow.strftime('%Y-%m-%d')}"
         success = pushover_client.send_summary(
             title=title,
             message=message
